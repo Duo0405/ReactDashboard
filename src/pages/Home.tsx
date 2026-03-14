@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { StatCard } from '../components/ui/StatCard'
 import { Badge } from '../components/ui/Badge'
 
@@ -66,6 +67,34 @@ const statusLabel: Record<string, string> = {
 }
 
 export function Home() {
+    const [statsData, setStatsData] = useState(stats)
+    const [eventsData, setEventsData] = useState(events)
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const resStats = await fetch('/api/dashboard/stats')
+                if (resStats.ok) {
+                    const data = await resStats.json()
+                    if (data && data.length > 0) setStatsData(data)
+                }
+            } catch (e) {
+                console.warn('Failed to fetch dashboard stats, using mock data:', e)
+            }
+
+            try {
+                const resEvents = await fetch('/api/dashboard/events')
+                if (resEvents.ok) {
+                    const data = await resEvents.json()
+                    if (data && data.length > 0) setEventsData(data)
+                }
+            } catch (e) {
+                console.warn('Failed to fetch dashboard events, using mock data:', e)
+            }
+        }
+        fetchData()
+    }, [])
+
     return (
         <div className="space-y-6">
             <div>
@@ -75,7 +104,7 @@ export function Home() {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((s) => (
+                {statsData.map((s) => (
                     <StatCard key={s.title} {...s} />
                 ))}
             </div>
@@ -98,7 +127,7 @@ export function Home() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {events.map((e) => (
+                            {eventsData.map((e) => (
                                 <tr key={e.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 text-sm font-medium text-slate-900">{e.server}</td>
                                     <td className="px-6 py-4 text-sm text-slate-600">{e.event}</td>
@@ -114,7 +143,7 @@ export function Home() {
 
                 {/* Mobile card list */}
                 <div className="md:hidden divide-y divide-slate-100">
-                    {events.map((e) => (
+                    {eventsData.map((e) => (
                         <div key={e.id} className="px-4 py-4 space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-slate-900">{e.server}</span>

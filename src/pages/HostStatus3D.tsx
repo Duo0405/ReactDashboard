@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Text, RoundedBox } from '@react-three/drei'
 import { Badge } from '../components/ui/Badge'
@@ -168,11 +168,48 @@ function MetricBar({ label, value }: { label: string; value: number }) {
 
 // ── Page ─────────────────────────────────────────────────────
 export function HostStatus3D() {
-    const [selectedId, setSelectedId] = useState<string | null>(servers[0].id)
-    const selected = servers.find((s) => s.id === selectedId)
+    const [serversData, setServersData] = useState<ServerData[]>([])
+    const [loading, setLoading] = useState(true)
+    const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [selected, setSelected] = useState<ServerData | null>(null)
+
+    useEffect(() => {
+        const fetchServers = async () => {
+            try {
+                const res = await fetch('/api/dashboard/servers')
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data && data.length > 0) {
+                        setServersData(data)
+                        setSelectedId(data[0].id)
+                        return
+                    }
+                }
+                throw new Error('No data')
+            } catch (error) {
+                console.warn('API servers fetch failed, using mock data:', error)
+                setServersData(servers)
+                setSelectedId(servers[0].id)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchServers()
+    }, [])
+
+    useEffect(() => {
+        if (selectedId) {
+            setSelected(serversData.find(s => s.id === selectedId) || null)
+        }
+    }, [selectedId, serversData])
 
     return (
         <div className="space-y-6">
+            {loading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50/50 backdrop-blur-sm">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+            )}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">3D 主機監控</h1>
                 <p className="mt-1 text-sm text-slate-500">
@@ -197,7 +234,7 @@ export function HostStatus3D() {
                         <Floor />
                         <RackFrame />
 
-                        {servers.map((server, i) => (
+                        {!loading && serversData.map((server, i) => (
                             <ServerBox
                                 key={server.id}
                                 server={server}
@@ -245,7 +282,7 @@ export function HostStatus3D() {
                                     所有伺服器
                                 </p>
                                 <div className="space-y-1.5">
-                                    {servers.map((s) => (
+                                    {serversData.map((s) => (
                                         <button
                                             key={s.id}
                                             onClick={() => setSelectedId(s.id)}

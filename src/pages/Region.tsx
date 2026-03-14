@@ -104,14 +104,46 @@ function MetricBox({ label, value, unit }: { label: string; value: number | stri
 
 export function Region() {
     const pixiContainerRef = useRef<HTMLDivElement>(null)
-    const [selectedRegionId, setSelectedRegionId] = useState<string | null>(regionsInfo[0].id)
-    const selectedRegion = regionsInfo.find((r) => r.id === selectedRegionId)
+    const [regionsData, setRegionsData] = useState<RegionData[]>([])
+    const [loading, setLoading] = useState(true)
+    const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
+    const [selectedRegion, setSelectedRegion] = useState<RegionData | null>(null)
+
+    useEffect(() => {
+        const fetchRegions = async () => {
+            try {
+                const res = await fetch('/api/dashboard/regions')
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data && data.length > 0) {
+                        setRegionsData(data)
+                        setSelectedRegionId(data[0].id)
+                        return
+                    }
+                }
+                throw new Error('No data')
+            } catch (error) {
+                console.warn('API regions fetch failed, using mock data:', error)
+                setRegionsData(regionsInfo)
+                setSelectedRegionId(regionsInfo[0].id)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchRegions()
+    }, [])
+
+    useEffect(() => {
+        if (selectedRegionId) {
+            setSelectedRegion(regionsData.find(r => r.id === selectedRegionId) || null)
+        }
+    }, [selectedRegionId, regionsData])
 
     // 用一個 ref 來儲存所有的 Pixi Graphics，這樣外部就能操作它們
     const regionGraphicsRef = useRef<Record<string, PIXI.Graphics>>({})
 
     useEffect(() => {
-        if (!pixiContainerRef.current) return
+        if (loading || !pixiContainerRef.current) return
 
         let isDestroyed = false
         // 1. 初始化 Pixi Application
@@ -192,7 +224,7 @@ export function Region() {
             // 4. 管理互動狀態 (不依賴 React state 重建)
             let currentSelectedId = selectedRegionId
 
-            regionsInfo.forEach((region) => {
+            regionsData.forEach((region) => {
                 const g = new PIXI.Graphics()
 
                 // 設定互動屬性
@@ -228,7 +260,7 @@ export function Region() {
                     currentSelectedId = region.id
 
                     // 直接強制重繪所有區塊，不需要銷毀整個 app
-                    regionsInfo.forEach(r => {
+                    regionsData.forEach(r => {
                         const targetG = regionGraphicsRef.current[r.id]
                         if (!targetG) return
                         
@@ -252,7 +284,7 @@ export function Region() {
             const textContainer = new PIXI.Container()
             app.stage.addChild(textContainer)
 
-            regionsInfo.forEach((region) => {
+            regionsData.forEach((region) => {
                 const text = new PIXI.Text({
                     text: region.name,
                     style: {
@@ -295,13 +327,13 @@ export function Region() {
                 app.destroy(true, { children: true })
             }
         }
-    }, []) // 將依賴陣列清空，避免 React state 選取變化時重建整個 Pixi App！
+    }, [loading]) // 當 loading 結束時才執行
 
     // 監聽 selectedRegionId 的變化（例如從右側選單點擊）同步更新 Pixi 的繪圖狀態
     useEffect(() => {
         if (!selectedRegionId || Object.keys(regionGraphicsRef.current).length === 0) return
 
-        regionsInfo.forEach(r => {
+        regionsData.forEach(r => {
             const targetG = regionGraphicsRef.current[r.id]
             if (!targetG) return
 
@@ -319,6 +351,11 @@ export function Region() {
 
     return (
         <div className="space-y-6">
+            {loading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50/50 backdrop-blur-sm">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+            )}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">全球地區監控</h1>
                 <p className="mt-1 text-sm text-slate-500">
@@ -376,7 +413,7 @@ export function Region() {
                             <div className="mt-auto border-t border-slate-100 pt-6">
                                 <h3 className="text-sm font-medium text-slate-900 mb-4">地區列表</h3>
                                 <div className="space-y-2">
-                                    {regionsInfo.map((r) => (
+                                    {regionsData.map((r) => (
                                         <button
                                             key={r.id}
                                             onClick={() => setSelectedRegionId(r.id)}

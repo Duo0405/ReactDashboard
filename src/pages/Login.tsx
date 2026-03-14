@@ -13,21 +13,23 @@ export function Login() {
 
     if (token) return <Navigate to="/" replace />
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         setError('')
         setLoading(true)
 
-        // Simulate async login
-        setTimeout(() => {
-            const ok = login(email, password)
+        try {
+            const ok = await login(email, password)
             if (ok) {
                 navigate('/')
             } else {
                 setError('帳號或密碼錯誤')
             }
+        } catch (error) {
+            setError('系統發生錯誤，請稍後再試')
+        } finally {
             setLoading(false)
-        }, 600)
+        }
     }
 
     return (
