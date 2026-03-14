@@ -98,9 +98,10 @@ export function Login() {
                         </Button>
                     </form>
 
-                    <p className="mt-6 text-center text-xs text-slate-400">
-                        測試帳號：admin@example.com / admin
-                    </p>
+                    <div className="mt-6 text-center text-xs text-slate-400 space-y-0.5">
+                        <p>管理員：admin@example.com / admin</p>
+                        <p>使用者：user1@example.com / user1</p>
+                    </div>
                 </div>
             </div>
         </div>

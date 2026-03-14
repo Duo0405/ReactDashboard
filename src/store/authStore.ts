@@ -36,12 +36,18 @@ export const useAuthStore = create<AuthState>((set) => ({
         } catch (error) {
             console.warn('API login failed, falling back to mock data', error)
             // Fallback to mock logic
-            if (email === 'admin@example.com' && password === 'admin') {
-                const user: User = { name: 'Admin', email, role: 'admin' }
+            const mockUsers: Record<string, { password: string; user: User }> = {
+                'admin@example.com': { password: 'admin', user: { name: 'Admin', email: 'admin@example.com', role: 'admin' } },
+                'user1@example.com': { password: 'user1', user: { name: 'User 1', email: 'user1@example.com', role: 'user' } },
+                'user2@example.com': { password: 'user2', user: { name: 'User 2', email: 'user2@example.com', role: 'user' } },
+                'user3@example.com': { password: 'user3', user: { name: 'User 3', email: 'user3@example.com', role: 'user' } },
+            }
+            const match = mockUsers[email]
+            if (match && match.password === password) {
                 const token = 'mock-jwt-token-' + Date.now()
                 localStorage.setItem('token', token)
-                localStorage.setItem('user', JSON.stringify(user))
-                set({ token, user })
+                localStorage.setItem('user', JSON.stringify(match.user))
+                set({ token, user: match.user })
                 return true
             }
             return false
