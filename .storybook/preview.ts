@@ -9,6 +9,19 @@ const preview: Preview = {
                 date: /Date$/i,
             },
         },
+        backgrounds: {
+            default: 'dark',
+            values: [
+                {
+                    name: 'dark',
+                    value: '#0f172a', // slate-900 from Tailwind
+                },
+                {
+                    name: 'light',
+                    value: '#f8fafc', // slate-50
+                },
+            ],
+        },
     },
 }
 export default preview

@@ -1,19 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import * as PIXI from 'pixi.js'
+import { useEffect, useState } from 'react'
 import { Badge } from '../components/ui/Badge'
+import { WorldMap } from '../components/visualization/WorldMap'
+import type { RegionData } from '../types/dashboard'
 
 // ── Mock Data ────────────────────────────────────────────────
-interface RegionData {
-    id: string
-    name: string
-    status: 'online' | 'warning' | 'critical'
-    activeNodes: number
-    totalNodes: number
-    latency: number
-    color: number // PIXI 色碼
-    path: number[] // 簡化版的多邊形座標 (相對於 800x600 的畫布)
-}
-
 const regionsInfo: RegionData[] = [
     {
         id: 'na',
@@ -103,11 +93,9 @@ function MetricBox({ label, value, unit }: { label: string; value: number | stri
 }
 
 export function Region() {
-    const pixiContainerRef = useRef<HTMLDivElement>(null)
     const [regionsData, setRegionsData] = useState<RegionData[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
-    const [selectedRegion, setSelectedRegion] = useState<RegionData | null>(null)
 
     useEffect(() => {
         const fetchRegions = async () => {
@@ -133,221 +121,7 @@ export function Region() {
         fetchRegions()
     }, [])
 
-    useEffect(() => {
-        if (selectedRegionId) {
-            setSelectedRegion(regionsData.find(r => r.id === selectedRegionId) || null)
-        }
-    }, [selectedRegionId, regionsData])
-
-    // 用一個 ref 來儲存所有的 Pixi Graphics，這樣外部就能操作它們
-    const regionGraphicsRef = useRef<Record<string, PIXI.Graphics>>({})
-
-    useEffect(() => {
-        if (loading || !pixiContainerRef.current) return
-
-        let isDestroyed = false
-        // 1. 初始化 Pixi Application
-        const app = new PIXI.Application()
-
-        const resize = () => {
-            if (!pixiContainerRef.current || !app.renderer) return
-            const parent = pixiContainerRef.current
-            const targetW = 800
-            const targetH = 600
-
-            // 取得外層可用空間
-            const containerWidth = parent.clientWidth
-            const containerHeight = Math.max(parent.clientHeight, 400) // 最少給 400px
-
-            // 計算讓畫面完全包含 (contain) 在裡面的縮放比例
-            const scaleX = containerWidth / targetW
-            const scaleY = containerHeight / targetH
-            const scale = Math.min(scaleX, scaleY) // 也可以改成用更小值，確保不被裁切
-
-            // Canvas 本身的解析度
-            const finalW = targetW * scale
-            const finalH = targetH * scale
-
-            app.renderer.resize(finalW, finalH)
-            app.stage.scale.set(scale)
-
-            // 讓整個畫面的原點置中對齊
-            app.stage.position.set(
-                (containerWidth - finalW) / 2,
-                (containerHeight - finalH) / 2
-            )
-        }
-
-        // 使用 async 函數來處理初始化
-        const initPixi = async () => {
-            await app.init({
-                width: 800,
-                height: 600,
-                backgroundColor: 0x0f172a, // slate-900
-                antialias: true,
-                resolution: window.devicePixelRatio || 1,
-                autoDensity: true,
-            })
-
-            // 載入背景地圖
-            const mapTexture = await PIXI.Assets.load('/world-map.png')
-
-            // 如果還沒初始化完成元件就已經卸載，則銷毀這份 App 並直接結束
-            if (isDestroyed) {
-                app.destroy(true, { children: true })
-                return
-            }
-
-            // 確保容器存在且為空再加入
-            if (pixiContainerRef.current) {
-                pixiContainerRef.current.innerHTML = ''
-                pixiContainerRef.current.appendChild(app.canvas)
-            }
-
-            window.addEventListener('resize', resize)
-            // 延遲一點點執行首次 resize 以確保 container 寬度已計算
-            setTimeout(resize, 0)
-
-            // 1.5. 建立背景圖片
-            const bgSprite = new PIXI.Sprite(mapTexture)
-            // 將圖片調整至剛好填滿 800x600 的畫布大小
-            bgSprite.width = 800
-            bgSprite.height = 600
-            bgSprite.alpha = 0.5 // 調暗一點讓色塊比較明顯
-            app.stage.addChild(bgSprite)
-
-            // 2. 建立地圖圖層
-            const mapContainer = new PIXI.Container()
-            app.stage.addChild(mapContainer)
-
-            // 3. 繪製各州區塊
-            // 4. 管理互動狀態 (不依賴 React state 重建)
-            let currentSelectedId = selectedRegionId
-
-            regionsData.forEach((region) => {
-                const g = new PIXI.Graphics()
-
-                // 設定互動屬性
-                g.eventMode = 'static'
-                g.cursor = 'pointer'
-
-                const drawRegion = (isHovered: boolean, isSelected: boolean) => {
-                    g.clear()
-
-                    // 邊框
-                    const alpha = isHovered || isSelected ? 1 : 0.6
-                    const lineColor = isSelected ? 0xffffff : region.color
-
-                    g.lineStyle(isSelected ? 3 : 2, lineColor, alpha)
-
-                    // 填色
-                    g.beginFill(region.color, isHovered ? 0.3 : (isSelected ? 0.4 : 0.1))
-
-                    // 繪製多邊形
-                    g.drawPolygon(region.path)
-                    g.endFill()
-                }
-
-                // 初始繪製
-                drawRegion(false, region.id === currentSelectedId)
-
-                // 互動事件
-                g.on('pointerover', () => drawRegion(true, region.id === currentSelectedId))
-                g.on('pointerout', () => drawRegion(false, region.id === currentSelectedId))
-                g.on('pointerdown', () => {
-                    // 通知 React 更新右側面板
-                    setSelectedRegionId(region.id)
-                    currentSelectedId = region.id
-
-                    // 直接強制重繪所有區塊，不需要銷毀整個 app
-                    regionsData.forEach(r => {
-                        const targetG = regionGraphicsRef.current[r.id]
-                        if (!targetG) return
-                        
-                        const isThisSelected = r.id === currentSelectedId
-                        
-                        targetG.clear()
-                        const alpha = isThisSelected ? 1 : 0.6
-                        const lineColor = isThisSelected ? 0xffffff : r.color
-                        targetG.lineStyle(isThisSelected ? 3 : 2, lineColor, alpha)
-                        targetG.beginFill(r.color, isThisSelected ? 0.4 : 0.1)
-                        targetG.drawPolygon(r.path)
-                        targetG.endFill()
-                    })
-                })
-
-                regionGraphicsRef.current[region.id] = g
-                mapContainer.addChild(g)
-            })
-
-            // 文字標籤層
-            const textContainer = new PIXI.Container()
-            app.stage.addChild(textContainer)
-
-            regionsData.forEach((region) => {
-                const text = new PIXI.Text({
-                    text: region.name,
-                    style: {
-                        fontFamily: 'sans-serif',
-                        fontSize: 16,
-                        fill: 0xffffff,
-                        fontWeight: 'bold',
-                        dropShadow: {
-                            alpha: 0.5,
-                            angle: Math.PI / 6,
-                            blur: 4,
-                            color: 0x000000,
-                            distance: 2,
-                        }
-                    }
-                })
-
-                // 計算多邊形中心點來放文字 (簡易算法：取X/Y平均值)
-                let sumX = 0, sumY = 0
-                for (let i = 0; i < region.path.length; i += 2) {
-                    sumX += region.path[i]
-                    sumY += region.path[i + 1]
-                }
-                const count = region.path.length / 2
-
-                text.position.set(sumX / count, sumY / count)
-                text.anchor.set(0.5)
-                textContainer.addChild(text)
-            })
-        }
-
-        initPixi()
-
-        // 清理 UI
-        return () => {
-            isDestroyed = true
-            window.removeEventListener('resize', resize)
-            // 只有當 renderer 已經存在 (代表初始化已完成)，才在此處直接執行 destroy
-            if (app.renderer) {
-                app.destroy(true, { children: true })
-            }
-        }
-    }, [loading]) // 當 loading 結束時才執行
-
-    // 監聽 selectedRegionId 的變化（例如從右側選單點擊）同步更新 Pixi 的繪圖狀態
-    useEffect(() => {
-        if (!selectedRegionId || Object.keys(regionGraphicsRef.current).length === 0) return
-
-        regionsData.forEach(r => {
-            const targetG = regionGraphicsRef.current[r.id]
-            if (!targetG) return
-
-            const isThisSelected = r.id === selectedRegionId
-            
-            targetG.clear()
-            const alpha = isThisSelected ? 1 : 0.6
-            const lineColor = isThisSelected ? 0xffffff : r.color
-            targetG.lineStyle(isThisSelected ? 3 : 2, lineColor, alpha)
-            targetG.beginFill(r.color, isThisSelected ? 0.4 : 0.1)
-            targetG.drawPolygon(r.path)
-            targetG.endFill()
-        })
-    }, [selectedRegionId])
+    const selectedRegion = regionsData.find(r => r.id === selectedRegionId) || null
 
     return (
         <div className="space-y-6">
@@ -366,15 +140,14 @@ export function Region() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Pixi.js Map Area */}
                 <div className="lg:col-span-2">
-                    <div className="bg-slate-900 rounded-xl shadow-sm border border-slate-700 overflow-hidden relative h-[500px] flex items-center justify-center">
-                        {/* 畫布容器 */}
-                        <div ref={pixiContainerRef} className="w-full h-full" />
-
-                        {/* 裝飾文字 */}
-                        <div className="absolute top-4 left-4 text-slate-400 text-xs font-mono select-none pointer-events-none">
-                            [PIXI.JS RENDERER ACTIVE] // WORLD_MAP_V1
-                        </div>
-                    </div>
+                    {!loading && (
+                        <WorldMap
+                            regions={regionsData}
+                            selectedRegionId={selectedRegionId}
+                            onSelectRegion={setSelectedRegionId}
+                            height={500}
+                        />
+                    )}
                 </div>
 
                 {/* Right Panel: Detail Info */}
