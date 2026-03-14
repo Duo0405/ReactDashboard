@@ -61,7 +61,7 @@ export function Sidebar() {
                 className={`fixed top-16 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col
           transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0 md:static md:z-auto`}
+          md:translate-x-0 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:z-auto`}
             >
                 {/* Navigation */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
