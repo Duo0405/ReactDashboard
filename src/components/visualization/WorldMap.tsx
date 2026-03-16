@@ -46,7 +46,16 @@ export function WorldMap({
             targetG.clear()
                 .poly(r.path)
                 .fill({ color: r.color, alpha: isThisSelected ? 0.4 : 0.1 })
-                .stroke({ width: isThisSelected ? 3 : 2, color: lineColor, alpha })
+            
+            if (isThisSelected) {
+                targetG.stroke({ width: 20, color: lineColor, alpha: 0.15 })
+                targetG.stroke({ width: 10, color: lineColor, alpha: 0.3 })
+            }
+            targetG.stroke({ width: isThisSelected ? 3 : 2, color: lineColor, alpha })
+
+            if (isThisSelected && targetG.parent) {
+                targetG.parent.addChild(targetG)
+            }
         })
     }, [selectedRegionId, regions])
 
@@ -149,7 +158,18 @@ export function WorldMap({
                     g.clear()
                         .poly(region.path)
                         .fill({ color: region.color, alpha: fillAlpha })
-                        .stroke({ width: isSelected ? 3 : 2, color: lineColor, alpha })
+                    
+                    if (isSelected) {
+                        g.stroke({ width: 20, color: lineColor, alpha: 0.15 })
+                        g.stroke({ width: 10, color: lineColor, alpha: 0.3 })
+                    } else if (isHovered) {
+                        g.stroke({ width: 12, color: lineColor, alpha: 0.2 })
+                    }
+                    g.stroke({ width: isSelected ? 3 : 2, color: lineColor, alpha })
+
+                    if ((isSelected || isHovered) && g.parent) {
+                        g.parent.addChild(g)
+                    }
                 }
 
                 drawRegion(false, region.id === selectedIdRef.current)
@@ -170,7 +190,16 @@ export function WorldMap({
                         targetG.clear()
                             .poly(r.path)
                             .fill({ color: r.color, alpha: isThisSelected ? 0.4 : 0.1 })
-                            .stroke({ width: isThisSelected ? 3 : 2, color: lineColor, alpha })
+                            
+                        if (isThisSelected) {
+                            targetG.stroke({ width: 20, color: lineColor, alpha: 0.15 })
+                            targetG.stroke({ width: 10, color: lineColor, alpha: 0.3 })
+                        }
+                        targetG.stroke({ width: isThisSelected ? 3 : 2, color: lineColor, alpha })
+
+                        if (isThisSelected && targetG.parent) {
+                            targetG.parent.addChild(targetG)
+                        }
                     })
                 })
 
