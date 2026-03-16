@@ -40,14 +40,13 @@ export function WorldMap({
             if (!targetG) return
 
             const isThisSelected = r.id === selectedRegionId
-
-            targetG.clear()
             const alpha = isThisSelected ? 1 : 0.6
             const lineColor = isThisSelected ? 0xffffff : r.color
-            targetG.lineStyle(isThisSelected ? 3 : 2, lineColor, alpha)
-            targetG.beginFill(r.color, isThisSelected ? 0.4 : 0.1)
-            targetG.drawPolygon(r.path)
-            targetG.endFill()
+
+            targetG.clear()
+                .poly(r.path)
+                .fill({ color: r.color, alpha: isThisSelected ? 0.4 : 0.1 })
+                .stroke({ width: isThisSelected ? 3 : 2, color: lineColor, alpha })
         })
     }, [selectedRegionId, regions])
 
@@ -143,13 +142,14 @@ export function WorldMap({
                 g.cursor = 'pointer'
 
                 const drawRegion = (isHovered: boolean, isSelected: boolean) => {
-                    g.clear()
                     const alpha = isHovered || isSelected ? 1 : 0.6
                     const lineColor = isSelected ? 0xffffff : region.color
-                    g.lineStyle(isSelected ? 3 : 2, lineColor, alpha)
-                    g.beginFill(region.color, isHovered ? 0.3 : isSelected ? 0.4 : 0.1)
-                    g.drawPolygon(region.path)
-                    g.endFill()
+                    const fillAlpha = isHovered ? 0.3 : isSelected ? 0.4 : 0.1
+
+                    g.clear()
+                        .poly(region.path)
+                        .fill({ color: region.color, alpha: fillAlpha })
+                        .stroke({ width: isSelected ? 3 : 2, color: lineColor, alpha })
                 }
 
                 drawRegion(false, region.id === selectedIdRef.current)
@@ -164,13 +164,13 @@ export function WorldMap({
                         const targetG = regionGraphicsRef.current[r.id]
                         if (!targetG) return
                         const isThisSelected = r.id === region.id
-                        targetG.clear()
                         const alpha = isThisSelected ? 1 : 0.6
                         const lineColor = isThisSelected ? 0xffffff : r.color
-                        targetG.lineStyle(isThisSelected ? 3 : 2, lineColor, alpha)
-                        targetG.beginFill(r.color, isThisSelected ? 0.4 : 0.1)
-                        targetG.drawPolygon(r.path)
-                        targetG.endFill()
+
+                        targetG.clear()
+                            .poly(r.path)
+                            .fill({ color: r.color, alpha: isThisSelected ? 0.4 : 0.1 })
+                            .stroke({ width: isThisSelected ? 3 : 2, color: lineColor, alpha })
                     })
                 })
 
