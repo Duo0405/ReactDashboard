@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { Button } from '../components/ui/Button'
+import { APP_VERSION } from '../constants/app'
 
 export function Login() {
     const { token, login } = useAuthStore()
@@ -103,6 +104,8 @@ export function Login() {
                         <p>使用者：user1@example.com / user1</p>
                     </div>
                 </div>
+
+                <p className="mt-4 text-center text-xs text-slate-400">{APP_VERSION}</p>
             </div>
         </div>
     )

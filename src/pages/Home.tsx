@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { StatCard } from '../components/ui/StatCard'
 import { Badge } from '../components/ui/Badge'
+import { APP_VERSION } from '../constants/app'
 
 const stats = [
     {
@@ -155,6 +156,9 @@ export function Home() {
                     ))}
                 </div>
             </div>
+
+            {/* Version */}
+            <p className="text-right text-xs text-slate-400">{APP_VERSION}</p>
         </div>
     )
 }
